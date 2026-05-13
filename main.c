@@ -8,6 +8,17 @@
 #define ARQ_DADOS "clientes.txt"
 #define ARQ_INDICE "indice.dat"
 
+#ifdef _WIN32
+    #define limpar system("cls")
+#else
+    #define limpar system("clear")
+#endif
+
+void limparBuffer(){
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
 void menu() {
     printf("\n");
     printf("========================================\n");
@@ -102,8 +113,10 @@ int main() {
     do {
         menu();
         scanf("%d", &opcao);
-        getchar(); // Limpa o buffer do teclado
-        
+        limparBuffer();
+        limpar;
+        //getchar(); // Limpa o buffer do teclado
+
         switch(opcao) {
             // CASO 1: INSERIR CLIENTE
             case 1: {
@@ -164,6 +177,8 @@ int main() {
             
             // CASO 3: MODIFICAR CLIENTE
             case 3: {
+                ArvB_listar_ordenado(raiz, ARQ_DADOS);
+
                 char cpf[CPF_TAM];
                 printf("\nCPF para modificar: ");
                 fgets(cpf, CPF_TAM, stdin);
@@ -193,6 +208,7 @@ int main() {
                 printf("Nome atual: %s\n", c.nome);
                 printf("Novo nome: ");
                 fgets(buffer, 100, stdin);
+  
                 buffer[strcspn(buffer, "\n")] = '\0';
                 if(strlen(buffer) > 0) {
                     strcpy(c.nome, buffer);
@@ -202,6 +218,7 @@ int main() {
                 printf("Email atual: %s\n", c.email);
                 printf("Novo email: ");
                 fgets(buffer, 100, stdin);
+
                 buffer[strcspn(buffer, "\n")] = '\0';
                 if(strlen(buffer) > 0) {
                     strcpy(c.email, buffer);
@@ -212,6 +229,7 @@ int main() {
                 printf("Nova idade: ");
                 char idade_str[10];
                 fgets(idade_str, 10, stdin);
+
                 if(strlen(idade_str) > 1) {
                     c.idade = atoi(idade_str);
                 }
@@ -233,6 +251,8 @@ int main() {
             
             // CASO 5: REMOVER CLIENTE
             case 5: {
+                ArvB_listar_ordenado(raiz, ARQ_DADOS);
+
                 char cpf[CPF_TAM];
                 printf("\nCPF para remover: ");
                 fgets(cpf, CPF_TAM, stdin);
@@ -261,7 +281,6 @@ int main() {
             case 6: {
                 printf("\nSalvando indice no disco...\n");
                 ArvB_salvar(raiz, ARQ_INDICE);
-                printf("Programa encerrado. Ate logo!\n");
                 break;
             }
             
@@ -270,6 +289,10 @@ int main() {
                 break;
             }
         }
+        printf("Pressione 'Enter' para prosseguir...");
+        limparBuffer();
+        limpar;
+        
     } while(opcao != 6);
     
     // Libera a memória da árvore
