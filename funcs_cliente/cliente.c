@@ -1,6 +1,4 @@
 #include "cliente.h"
-#include <stdio.h>
-#include <string.h>
 
 // Preenche os dados de um cliente via teclado
 

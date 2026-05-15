@@ -472,6 +472,7 @@ NoArvB* ArvB_carregar(const char *nome_arquivo) {
     FILE *fp = fopen(nome_arquivo, "rb");
     if(fp == NULL) {
         printf("Arquivo de indice nao encontrado.\n");
+        printf("Novo arquivo gerado!\n");
         return NULL;
     }
     

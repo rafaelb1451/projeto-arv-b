@@ -5,6 +5,9 @@
 #define MAX_EMAIL 100
 #define CPF_TAM 12
 
+#include <stdio.h>
+#include <string.h>
+
 typedef struct {
     char cpf[CPF_TAM];
     int idade;
