@@ -1,7 +1,4 @@
 #include "arvb.h"
-#include "cliente.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 // FUNÇÃO: ArvB_criar
 

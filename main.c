@@ -1,105 +1,8 @@
-#include "arvb.h"
-#include "cliente.c"
-#include "arvb.c"
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
-#define ARQ_DADOS "clientes.txt"
-#define ARQ_INDICE "indice.dat"
-
-#ifdef _WIN32
-    #define limpar system("cls")
-#else
-    #define limpar system("clear")
-#endif
-
-void limparBuffer(){
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);
-}
-
-void menu() {
-    printf("\n");
-    printf("========================================\n");
-    printf("     SISTEMA DE CADASTRO DE CLIENTES    \n");
-    printf("========================================\n");
-    printf("1 - Inserir novo cliente\n");
-    printf("2 - Buscar cliente por CPF\n");
-    printf("3 - Modificar cliente\n");
-    printf("4 - Listar todos os clientes (ordenado)\n");
-    printf("5 - Remover cliente\n");
-    printf("6 - Sair\n");
-    printf("========================================\n");
-    printf("Opcao: ");
-}
-
-// Insere um cliente no arquivo de dados e retorna a posição onde o cliente foi inserido
-long inserir_no_arquivo(Cliente *c) {
-    FILE *dados = fopen(ARQ_DADOS, "a");
-    if(dados == NULL) {
-        printf("Erro ao abrir arquivo de dados!\n");
-        return -1;
-    }
-    
-    // Vai para o final do arquivo para saber a posição
-    fseek(dados, 0, SEEK_END);
-    long posicao = ftell(dados);
-    
-    // Converte cliente para string e escreve
-    char buffer[300];
-    cliente_para_string(c, buffer, 300);
-    fprintf(dados, "%s", buffer);
-    
-    fclose(dados);
-    return posicao;
-}
-
-// Busca um cliente no arquivo pela posição
-
-int buscar_no_arquivo(long posicao, Cliente *c) {
-    FILE *dados = fopen(ARQ_DADOS, "r");
-    if(dados == NULL) return 0;
-    
-    fseek(dados, posicao, SEEK_SET);
-    
-    char linha[300];
-    if(fgets(linha, 300, dados) == NULL) {
-        fclose(dados);
-        return 0;
-    }
-    
-    cliente_de_string(c, linha);
-    fclose(dados);
-    return 1;
-}
-
-
-// Modifica um cliente na posição específica
-
-int modificar_no_arquivo(long posicao, Cliente *c) {
-    FILE *dados = fopen(ARQ_DADOS, "r+");
-    if(dados == NULL) return 0;
-    
-    fseek(dados, posicao, SEEK_SET);
-    
-    char buffer[300];
-    cliente_para_string(c, buffer, 300);
-    fprintf(dados, "%s", buffer);
-    
-    fclose(dados);
-    return 1;
-}
-
-// FUNÇÃO main
+#include "funcs_geral\\funcs_geral.h"
 
 int main() {
     NoArvB *raiz = NULL;
     int opcao;
-    
-    printf("========================================\n");
-    printf("   BEM-VINDO AO SISTEMA DE CADASTRO    \n");
-    printf("========================================\n");
     
     // Tenta carregar índice existente do disco
     printf("Carregando indice do disco...\n");
@@ -113,9 +16,9 @@ int main() {
     do {
         menu();
         scanf("%d", &opcao);
-        limparBuffer();
+        //limparBuffer();
         limpar;
-        //getchar(); // Limpa o buffer do teclado
+        getchar(); // Limpa o buffer do teclado
 
         switch(opcao) {
             // CASO 1: INSERIR CLIENTE
@@ -198,7 +101,7 @@ int main() {
                     printf(" Erro ao ler cliente!\n");
                     break;
                 }
-                
+                limparBuffer();
                 printf("\n--- MODIFICANDO CLIENTE ---\n");
                 printf("Deixe em branco para manter o valor atual\n\n");
                 
