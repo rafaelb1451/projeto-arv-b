@@ -79,3 +79,9 @@ int modificar_no_arquivo(long posicao, Cliente *c){
     fclose(dados);
     return 1;
 }
+
+NoArvB *reiniciarDados(NoArvB *raiz){
+    NoArvB *novaRaiz = NULL;
+
+    
+}
