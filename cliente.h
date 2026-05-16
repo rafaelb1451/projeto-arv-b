@@ -1,21 +1,24 @@
 #ifndef CLIENTE_H
 #define CLIENTE_H
 
-#define MAX_NOME 100
-#define MAX_EMAIL 100
 #define CPF_TAM 12
+#define NOME_TAM 100
+#define EMAIL_TAM 100
+#define TELEFONE_TAM 15
+#define ENDERECO_TAM 200
 
 typedef struct {
     char cpf[CPF_TAM];
-    int idade;
-    char nome[MAX_NOME];
-    char email[MAX_EMAIL];
+    char nome[NOME_TAM];
+    char email[EMAIL_TAM];
+    char telefone[TELEFONE_TAM];
+    char endereco[ENDERECO_TAM];
 } Cliente;
 
-// Protótipos das funções
 void cliente_preencher(Cliente *c);
 void cliente_exibir(Cliente *c);
 int cliente_para_string(Cliente *c, char *buffer, int tamanho);
 int cliente_de_string(Cliente *c, char *linha);
+void cliente_exibir_resumo(char *chave, long posicao);
 
 #endif

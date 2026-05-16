@@ -1,302 +1,429 @@
-#include "arvb.h"
+#include "arvoreB.h"
+#include "cliente.h"
+#include "produto.h"
+#include "venda.h"
+#include "arvoreB.c"
 #include "cliente.c"
-#include "arvb.c"
+#include "produto.c"
+#include "venda.c"
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
-#define ARQ_DADOS "clientes.txt"
-#define ARQ_INDICE "indice.dat"
+// Arquivos de dados
+#define ARQ_CLIENTES "clientes.txt"
+#define ARQ_PRODUTOS "produtos.txt"
+#define ARQ_IDX_CLIENTES "idx_clientes.dat"
+#define ARQ_IDX_PRODUTOS "idx_produtos.dat"
 
-#ifdef _WIN32
-    #define limpar system("cls")
-#else
-    #define limpar system("clear")
-#endif
 
-void limparBuffer(){
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);
+void verificar_arquivo_clientes() {
+    FILE *fp = fopen("clientes.txt", "r");
+    if(!fp) {
+        printf("Arquivo clientes.txt nao encontrado!\n");
+        return;
+    }
+    
+    printf("\n=== CONTEUDO DO ARQUIVO clientes.txt ===\n");
+    char linha[500];
+    long pos = 0;
+    int count = 0;
+    
+    while(fgets(linha, 500, fp)) {
+        printf("Posicao %ld: %s", pos, linha);
+        pos = ftell(fp);
+        count++;
+    }
+    
+    printf("Total de registros: %d\n", count);
+    printf("=========================================\n\n");
+    fclose(fp);
 }
 
-void menu() {
-    printf("\n");
-    printf("========================================\n");
-    printf("     SISTEMA DE CADASTRO DE CLIENTES    \n");
-    printf("========================================\n");
-    printf("1 - Inserir novo cliente\n");
-    printf("2 - Buscar cliente por CPF\n");
-    printf("3 - Modificar cliente\n");
-    printf("4 - Listar todos os clientes (ordenado)\n");
-    printf("5 - Remover cliente\n");
-    printf("6 - Sair\n");
-    printf("========================================\n");
-    printf("Opcao: ");
-}
-
-// Insere um cliente no arquivo de dados e retorna a posição onde o cliente foi inserido
-long inserir_no_arquivo(Cliente *c) {
-    FILE *dados = fopen(ARQ_DADOS, "a");
-    if(dados == NULL) {
-        printf("Erro ao abrir arquivo de dados!\n");
+long salvar_cliente(Cliente *c) {
+    FILE *fp = fopen("clientes.txt", "a");
+    if(!fp) {
+        printf(" Erro ao abrir arquivo clientes.txt\n");
         return -1;
     }
     
-    // Vai para o final do arquivo para saber a posição
-    fseek(dados, 0, SEEK_END);
-    long posicao = ftell(dados);
+    // Pega a posição ANTES de escrever
+    fseek(fp, 0, SEEK_END);
+    long pos = ftell(fp);
     
-    // Converte cliente para string e escreve
-    char buffer[300];
-    cliente_para_string(c, buffer, 300);
-    fprintf(dados, "%s", buffer);
+    printf("   [DEBUG] Posicao antes de escrever: %ld\n", pos); // Debug
     
-    fclose(dados);
-    return posicao;
+    char buffer[500];
+    cliente_para_string(c, buffer, 500);
+    fprintf(fp, "%s", buffer);
+    
+    fflush(fp); // Força a escrita no disco
+    fclose(fp);
+    
+    printf("   [DEBUG] Cliente salvo: %s na posicao %ld\n", c->cpf, pos);
+    
+    return pos;
 }
 
-// Busca um cliente no arquivo pela posição
-
-int buscar_no_arquivo(long posicao, Cliente *c) {
-    FILE *dados = fopen(ARQ_DADOS, "r");
-    if(dados == NULL) return 0;
-    
-    fseek(dados, posicao, SEEK_SET);
-    
-    char linha[300];
-    if(fgets(linha, 300, dados) == NULL) {
-        fclose(dados);
+int carregar_cliente(long pos, Cliente *c) {
+    FILE *fp = fopen("clientes.txt", "r");
+    if(!fp) {
+        printf(" Erro ao abrir clientes.txt para leitura\n");
         return 0;
     }
     
-    cliente_de_string(c, linha);
-    fclose(dados);
-    return 1;
-}
-
-
-// Modifica um cliente na posição específica
-
-int modificar_no_arquivo(long posicao, Cliente *c) {
-    FILE *dados = fopen(ARQ_DADOS, "r+");
-    if(dados == NULL) return 0;
-    
-    fseek(dados, posicao, SEEK_SET);
-    
-    char buffer[300];
-    cliente_para_string(c, buffer, 300);
-    fprintf(dados, "%s", buffer);
-    
-    fclose(dados);
-    return 1;
-}
-
-// FUNÇÃO main
-
-int main() {
-    NoArvB *raiz = NULL;
-    int opcao;
-    
-    printf("========================================\n");
-    printf("   BEM-VINDO AO SISTEMA DE CADASTRO    \n");
-    printf("========================================\n");
-    
-    // Tenta carregar índice existente do disco
-    printf("Carregando indice do disco...\n");
-    raiz = ArvB_carregar(ARQ_INDICE);
-    
-    if(raiz == NULL) {
-        printf("Nenhum indice encontrado. Iniciando nova arvore.\n");
-        raiz = ArvB_criar(1);  // Cria árvore vazia
+    fseek(fp, pos, SEEK_SET);
+    char linha[500];
+    if(!fgets(linha, 500, fp)) {
+        printf("   Debug: Falha ao ler linha na posicao %ld\n", pos);
+        fclose(fp);
+        return 0;
     }
     
-    do {
-        menu();
-        scanf("%d", &opcao);
-        limparBuffer();
-        limpar;
-        //getchar(); // Limpa o buffer do teclado
+    printf("   Debug: Linha lida: %s\n", linha);
+    
+    int resultado = cliente_de_string(c, linha);
+    fclose(fp);
+    return resultado;
+}
 
+int atualizar_cliente(long pos, Cliente *c) {
+    FILE *fp = fopen("clientes.txt", "r+");
+    if(!fp) return 0;
+    
+    fseek(fp, pos, SEEK_SET);
+    char buffer[500];
+    cliente_para_string(c, buffer, 500);
+    fprintf(fp, "%s", buffer);
+    fclose(fp);
+    return 1;
+}
+
+// funções de produto
+long salvar_produto(Produto *p) {
+    FILE *fp = fopen(ARQ_PRODUTOS, "a");
+    if(!fp) return -1;
+    
+    fseek(fp, 0, SEEK_END);
+    long pos = ftell(fp);
+    
+    char buffer[500];
+    produto_para_string(p, buffer, 500);
+    fprintf(fp, "%s", buffer);
+    fclose(fp);
+    return pos;
+}
+
+int carregar_produto(long pos, Produto *p) {
+    FILE *fp = fopen(ARQ_PRODUTOS, "r");
+    if(!fp) return 0;
+    
+    fseek(fp, pos, SEEK_SET);
+    char linha[500];
+    if(!fgets(linha, 500, fp)) {
+        fclose(fp);
+        return 0;
+    }
+    produto_de_string(p, linha);
+    fclose(fp);
+    return 1;
+}
+
+int atualizar_produto(long pos, Produto *p) {
+    FILE *fp = fopen(ARQ_PRODUTOS, "r+");
+    if(!fp) return 0;
+    
+    fseek(fp, pos, SEEK_SET);
+    char buffer[500];
+    produto_para_string(p, buffer, 500);
+    fprintf(fp, "%s", buffer);
+    fclose(fp);
+    return 1;
+}
+
+// venda
+void finalizar_venda(Venda *venda, NoArvB *raiz_produtos) {
+    // Atualizar estoque dos produtos
+    for(int i = 0; i < venda->num_itens; i++) {
+        long pos = ArvB_buscar(raiz_produtos, venda->itens[i].codigo_produto);
+        if(pos != -1) {
+            Produto p;
+            carregar_produto(pos, &p);
+            p.estoque -= venda->itens[i].quantidade;
+            atualizar_produto(pos, &p);
+        }
+    }
+    
+    venda_salvar(venda);
+}
+
+//menu
+void menu_principal() {
+    printf("\n");
+    printf("-------------------------------------------------------------\n");
+    printf("                   SUPERMERCADO 3 IRMAO \n");
+    printf("-------------------------------------------------------------\n");
+                    printf("    --- CLIENTES ---\n");
+                    printf("1 - Cadastrar cliente\n");
+                    printf("2 - Buscar cliente   \n");
+                    printf("3 - Listar clientes  \n");
+                    printf("4 - Remover cliente  \n");
+                    printf("---------------------\n");
+                    printf("   --- PRODUTOS ---\n");
+                    printf("5 - Cadastrar produto\n");
+                    printf("6 - Buscar produto   \n");
+                    printf("7 - Listar produtos  \n");
+                    printf("8 - Remover produto  \n");
+                    printf("---------------------\n");
+                    printf("    --- VENDAS --- \n");
+                    printf("9 - Nova venda\n");
+                    printf("10 - Listar vendas\n");
+                    printf("11 - Vendas por cliente\n");
+                    printf("---------------------\n");
+                    printf("0 - Sair             \n");
+                    printf("---------------------\n");
+                    printf("Opcao: ");
+}
+
+// ========== FUNÇÃO PRINCIPAL ==========
+int main() {
+    NoArvB *raiz_clientes = NULL;
+    NoArvB *raiz_produtos = NULL;
+    int opcao;
+    
+    printf("\n---------------------------------------------------------------\n");
+    printf("              BEM-VINDO AO SUPERMERCADO 3 IRMAO\n");
+    printf("\n---------------------------------------------------------------\n");
+    
+    // Carregar dados
+    raiz_clientes = ArvB_carregar(ARQ_IDX_CLIENTES);
+    if(!raiz_clientes) raiz_clientes = ArvB_criar(1);
+    
+    raiz_produtos = ArvB_carregar(ARQ_IDX_PRODUTOS);
+    if(!raiz_produtos) raiz_produtos = ArvB_criar(1);
+    
+    do {
+        menu_principal();
+        scanf("%d", &opcao);
+        getchar();
+        
         switch(opcao) {
-            // CASO 1: INSERIR CLIENTE
-            case 1: {
+            // ========== CLIENTES ==========
+            case 1: { // Cadastrar cliente
                 Cliente c;
-                printf("\n--- NOVO CLIENTE ---\n");
+                printf("\n--- CADASTRO DE CLIENTE ---\n");
                 cliente_preencher(&c);
                 
-                // Verifica se o CPF já existe
-                long pos_existente = ArvB_buscar(raiz, c.cpf);
-                if(pos_existente != -1) {
-                    printf("ERRO: CPF %s ja cadastrado!\n", c.cpf);
+                if(ArvB_buscar(raiz_clientes, c.cpf) != -1) {
+                    printf(" CPF ja cadastrado!\n");
                     break;
                 }
                 
-                // Insere no arquivo de dados
-                long posicao = inserir_no_arquivo(&c);
-                if(posicao == -1) {
-                    printf("ERRO ao inserir no arquivo!\n");
-                    break;
-                }
-                
-                // Insere no índice (árvore)
-                ArvB_inserir(&raiz, c.cpf, posicao);
-                
-                // Salva o índice no disco
-                ArvB_salvar(raiz, ARQ_INDICE);
-                
-                printf("\n Cliente inserido com sucesso!\n");
-                printf("   Posição no arquivo: %ld bytes\n", posicao);
+                long pos = salvar_cliente(&c);
+                ArvB_inserir(&raiz_clientes, c.cpf, pos);
+                ArvB_salvar(raiz_clientes, ARQ_IDX_CLIENTES);
+                printf("\n Cliente cadastrado com sucesso!\n");
+                verificar_arquivo_clientes();
                 break;
             }
             
-            // CASO 2: BUSCAR CLIENTE
-            case 2: {
+            case 2: { // Buscar cliente
                 char cpf[CPF_TAM];
-                printf("\nCPF para buscar: ");
+                printf("\nCPF: ");
                 fgets(cpf, CPF_TAM, stdin);
                 cpf[strcspn(cpf, "\n")] = '\0';
                 
-                // Busca a posição na árvore
-                long posicao = ArvB_buscar(raiz, cpf);
-                
-                if(posicao == -1) {
-                    printf("\n Cliente com CPF %s nao encontrado!\n", cpf);
+                long pos = ArvB_buscar(raiz_clientes, cpf);
+                if(pos == -1) {
+                    printf(" Cliente nao encontrado!\n");
                     break;
                 }
                 
-                // Busca os dados no arquivo
                 Cliente c;
-                if(buscar_no_arquivo(posicao, &c)) {
-                    cliente_exibir(&c);
-                    printf("Posicao no arquivo: %ld bytes\n", posicao);
-                } else {
-                    printf(" Erro ao ler dados do cliente!\n");
-                }
+                carregar_cliente(pos, &c);
+                cliente_exibir(&c);
                 break;
             }
             
-            // CASO 3: MODIFICAR CLIENTE
-            case 3: {
-                ArvB_listar_ordenado(raiz, ARQ_DADOS);
-
+            case 3: { // Listar clientes
+                printf("\n ----------------------------------------------------------------\n");
+                printf("|                    LISTA DE CLIENTES                           |\n");
+                printf("------------------------------------------------------------------\n");
+                printf("| CPF          |NOME                           |EMAIL            |\n");
+                printf("|----------------------------------------------------------------|\n");
+                ArvB_listar(raiz_clientes, cliente_exibir_resumo);
+                printf("|----------------------------------------------------------------|\n");
+                break;
+            }
+            
+            case 4: { // Remover cliente
                 char cpf[CPF_TAM];
-                printf("\nCPF para modificar: ");
+                printf("\nCPF: ");
                 fgets(cpf, CPF_TAM, stdin);
                 cpf[strcspn(cpf, "\n")] = '\0';
                 
-                // Busca a posição na árvore
-                long posicao = ArvB_buscar(raiz, cpf);
-                
-                if(posicao == -1) {
-                    printf("\n Cliente com CPF %s nao encontrado!\n", cpf);
-                    break;
-                }
-                
-                // Carrega os dados atuais
-                Cliente c;
-                if(!buscar_no_arquivo(posicao, &c)) {
-                    printf(" Erro ao ler cliente!\n");
-                    break;
-                }
-                
-                printf("\n--- MODIFICANDO CLIENTE ---\n");
-                printf("Deixe em branco para manter o valor atual\n\n");
-                
-                char buffer[100];
-                
-                // Modifica nome
-                printf("Nome atual: %s\n", c.nome);
-                printf("Novo nome: ");
-                fgets(buffer, 100, stdin);
-  
-                buffer[strcspn(buffer, "\n")] = '\0';
-                if(strlen(buffer) > 0) {
-                    strcpy(c.nome, buffer);
-                }
-                
-                // Modifica email
-                printf("Email atual: %s\n", c.email);
-                printf("Novo email: ");
-                fgets(buffer, 100, stdin);
-
-                buffer[strcspn(buffer, "\n")] = '\0';
-                if(strlen(buffer) > 0) {
-                    strcpy(c.email, buffer);
-                }
-                
-                // Modifica idade
-                printf("Idade atual: %d\n", c.idade);
-                printf("Nova idade: ");
-                char idade_str[10];
-                fgets(idade_str, 10, stdin);
-
-                if(strlen(idade_str) > 1) {
-                    c.idade = atoi(idade_str);
-                }
-                
-                // Salva as modificações no arquivo
-                if(modificar_no_arquivo(posicao, &c)) {
-                    printf("\n Cliente modificado com sucesso!\n");
+                if(ArvB_remover(&raiz_clientes, cpf)) {
+                    ArvB_salvar(raiz_clientes, ARQ_IDX_CLIENTES);
+                    printf(" Cliente removido!\n");
                 } else {
-                    printf(" Erro ao modificar cliente!\n");
+                    printf(" Cliente nao encontrado!\n");
                 }
                 break;
             }
             
-            // CASO 4: LISTAR TODOS ORDENADO
-            case 4: {
-                ArvB_listar_ordenado(raiz, ARQ_DADOS);
+            // ========== PRODUTOS ==========
+            case 5: { // Cadastrar produto
+                Produto p;
+                printf("\n--- CADASTRO DE PRODUTO ---\n");
+                produto_preencher(&p);
+                
+                if(ArvB_buscar(raiz_produtos, p.codigo) != -1) {
+                    printf(" Codigo ja cadastrado!\n");
+                    break;
+                }
+                
+                long pos = salvar_produto(&p);
+                ArvB_inserir(&raiz_produtos, p.codigo, pos);
+                ArvB_salvar(raiz_produtos, ARQ_IDX_PRODUTOS);
+                printf("\n Produto cadastrado com sucesso!\n");
                 break;
             }
             
-            // CASO 5: REMOVER CLIENTE
-            case 5: {
-                ArvB_listar_ordenado(raiz, ARQ_DADOS);
-
+            case 6: { // Buscar produto
+                char codigo[CODIGO_TAM];
+                printf("\nCodigo: ");
+                fgets(codigo, CODIGO_TAM, stdin);
+                codigo[strcspn(codigo, "\n")] = '\0';
+                
+                long pos = ArvB_buscar(raiz_produtos, codigo);
+                if(pos == -1) {
+                    printf(" Produto nao encontrado!\n");
+                    break;
+                }
+                
+                Produto p;
+                carregar_produto(pos, &p);
+                produto_exibir(&p);
+                break;
+            }
+            
+           case 7: { // Listar produtos
+            printf("\n   ----------------------------------------------------------------\n");
+                printf("|                    LISTA DE PRODUTOS                           |\n");
+                printf("| Codigo     │ Nome                           │ Estoque          |\n");
+                printf("|----------------------------------------------------------------|\n");
+                ArvB_listar(raiz_produtos, produto_exibir_resumo);
+                printf("|----------------------------------------------------------------|\n");
+                break;
+            }
+            
+            case 8: { // Remover produto
+                char codigo[CODIGO_TAM];
+                printf("\nCodigo: ");
+                fgets(codigo, CODIGO_TAM, stdin);
+                codigo[strcspn(codigo, "\n")] = '\0';
+                
+                if(ArvB_remover(&raiz_produtos, codigo)) {
+                    ArvB_salvar(raiz_produtos, ARQ_IDX_PRODUTOS);
+                    printf(" Produto removido!\n");
+                } else {
+                    printf(" Produto nao encontrado!\n");
+                }
+                break;
+            }
+            
+            // ========== VENDAS ==========
+            case 9: { // Nova venda
                 char cpf[CPF_TAM];
-                printf("\nCPF para remover: ");
+                printf("\n--- NOVA VENDA ---\n");
+                printf("CPF do cliente: ");
                 fgets(cpf, CPF_TAM, stdin);
                 cpf[strcspn(cpf, "\n")] = '\0';
                 
-                // Verifica se o cliente existe
-                long posicao = ArvB_buscar(raiz, cpf);
-                if(posicao == -1) {
-                    printf("\n Cliente com CPF %s nao encontrado!\n", cpf);
+                if(ArvB_buscar(raiz_clientes, cpf) == -1) {
+                    printf(" Cliente nao encontrado!\n");
                     break;
                 }
                 
-                // Remove da árvore
-                if(ArvB_remover(&raiz, cpf)) {
-                    // Salva o índice atualizado
-                    ArvB_salvar(raiz, ARQ_INDICE);
-                    printf("\n Cliente removido do indice!\n");
-                    printf("   (O registro permanece no arquivo, mas não será encontrado)\n");
+                Venda venda;
+                venda_inicializar(&venda, cpf);
+                
+                char continuar = 's';
+                while(continuar == 's' || continuar == 'S') {
+                    char codigo[CODIGO_TAM];
+                    int quantidade;
+                    
+                    printf("\nCodigo do produto: ");
+                    fgets(codigo, CODIGO_TAM, stdin);
+                    codigo[strcspn(codigo, "\n")] = '\0';
+                    
+                    long pos = ArvB_buscar(raiz_produtos, codigo);
+                    if(pos == -1) {
+                        printf(" Produto nao encontrado!\n");
+                    } else {
+                        Produto p;
+                        carregar_produto(pos, &p);
+                        
+                        printf("Produto: %s\n", p.nome);
+                        printf("Preco: R$ %.2f\n", p.preco);
+                        printf("Estoque: %d\n", p.estoque);
+                        printf("Quantidade: ");
+                        scanf("%d", &quantidade);
+                        getchar();
+                        
+                        if(quantidade > p.estoque) {
+                            printf(" Estoque insuficiente!\n");
+                        } else {
+                            venda_adicionar_item(&venda, &p, quantidade);
+                            printf(" Item adicionado! Subtotal: R$ %.2f\n", quantidade * p.preco);
+                        }
+                    }
+                    
+                    printf("\nAdicionar mais itens? (s/n): ");
+                    scanf("%c", &continuar);
+                    getchar();
+                }
+                
+                if(venda.num_itens > 0) {
+                    venda_exibir(&venda);
+                    finalizar_venda(&venda, raiz_produtos);
+                    ArvB_salvar(raiz_produtos, ARQ_IDX_PRODUTOS);
+                    printf("\n Venda finalizada com sucesso!\n");
                 } else {
-                    printf("\n Erro ao remover cliente!\n");
+                    printf(" Venda cancelada - nenhum item adicionado.\n");
                 }
                 break;
             }
             
-            // CASO 6: SAIR
-            case 6: {
-                printf("\nSalvando indice no disco...\n");
-                ArvB_salvar(raiz, ARQ_INDICE);
+            case 10: // Listar vendas
+                vendas_listar();
+                break;
+            
+            case 11: { // Vendas por cliente
+                char cpf[CPF_TAM];
+                printf("\nCPF do cliente: ");
+                fgets(cpf, CPF_TAM, stdin);
+                cpf[strcspn(cpf, "\n")] = '\0';
+                vendas_por_cliente(cpf);
                 break;
             }
             
-            default: {
-                printf("\n Opçao invalida! Tente novamente.\n");
+            case 0: // Sair
+                printf("\nSalvando dados...\n");
+                ArvB_salvar(raiz_clientes, ARQ_IDX_CLIENTES);
+                ArvB_salvar(raiz_produtos, ARQ_IDX_PRODUTOS);
+                printf(" Dados salvos!\n");
+                printf("Programa encerrado. Volte sempre!\n");
                 break;
-            }
+            
+            default:
+                printf(" Opcao invalida!\n");
         }
-        printf("Pressione 'Enter' para prosseguir...");
-        limparBuffer();
-        limpar;
-        
-    } while(opcao != 6);
+    } while(opcao != 0);
     
-    // Libera a memória da árvore
-    ArvB_destruir(raiz);
+    ArvB_destruir(raiz_clientes);
+    ArvB_destruir(raiz_produtos);
     
     return 0;
 }
